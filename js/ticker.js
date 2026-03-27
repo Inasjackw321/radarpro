@@ -1,14 +1,15 @@
 /**
- * RadarPro - Ticker Module
- * Scrolling bottom ticker bar with weather alerts and info
+ * StormTracker Pro - Ticker Module
+ * Scrolling bottom ticker with alerts, storm info, and weather data
  */
 const Ticker = (() => {
   let alertItems = [];
-  let contentEl = null;
-  const SEPARATOR = '◆';
+  let stormItems = [];
+  let el = null;
+  const SEP = '◆';
 
   function init() {
-    contentEl = document.getElementById('ticker-content');
+    el = document.getElementById('ticker-scroll');
     render();
   }
 
@@ -17,80 +18,76 @@ const Ticker = (() => {
     render();
   }
 
-  function render() {
-    if (!contentEl) return;
+  function setStorms(storms) {
+    stormItems = (storms || []).map(s => {
+      const cat = RadarMap.getCategory(s.maxWind);
+      return {
+        text: `🌀 ${cat.label} ${s.name} — ${s.maxWind} mph winds${s.pressure ? ' · ' + s.pressure + ' mb' : ''}${s.movement ? ' · Moving ' + s.movement : ''}`,
+        isStorm: true
+      };
+    });
+    render();
+  }
 
+  function render() {
+    if (!el) return;
     const items = buildItems();
 
     if (items.length === 0) {
-      // Default content
-      const defaultText = `${CONFIG.branding.stationName} ${SEPARATOR} ${CONFIG.branding.tagline} ${SEPARATOR} ${CONFIG.location.name} ${SEPARATOR} Powered by NWS & RainViewer`;
-      const html = `<span class="ticker-item">${defaultText}</span>`;
-      contentEl.innerHTML = html + html; // duplicate for seamless loop
-      setDuration(defaultText.length);
+      const def = `${CONFIG.branding.stationName} ${CONFIG.branding.callSign} ${SEP} ${CONFIG.branding.tagline} ${SEP} ${CONFIG.location.name} ${SEP} ${CONFIG.region} ${SEP} Powered by NWS, NHC & GOES Satellite`;
+      const html = `<span class="ticker-item">${def}</span>`;
+      el.innerHTML = html + html;
+      setDuration(def.length);
       return;
     }
 
-    // Build ticker HTML
     let html = items.map(item => {
-      const severityClass = item.severity
-        ? `ticker-item-alert ${item.severity.toLowerCase()}`
-        : '';
-      return `<span class="ticker-item ${severityClass}">${item.text}</span>
-              <span class="ticker-separator">${SEPARATOR}</span>`;
+      let cls = 'ticker-item';
+      if (item.severity) {
+        cls += ' alert-ticker';
+        if (item.severity === 'Extreme') cls += ' extreme';
+        if (item.event?.toLowerCase().includes('hurricane')) cls += ' hurricane';
+      }
+      if (item.isStorm) cls += ' alert-ticker hurricane';
+      return `<span class="${cls}">${item.text}</span><span class="ticker-sep">${SEP}</span>`;
     }).join('');
 
-    // Add branding between alert cycles
-    html += `<span class="ticker-item">${CONFIG.branding.stationName} &mdash; ${CONFIG.branding.tagline}</span>
-             <span class="ticker-separator">${SEPARATOR}</span>`;
+    // Brand bookend
+    html += `<span class="ticker-item">${CONFIG.branding.stationName} ${CONFIG.branding.callSign} — ${CONFIG.branding.tagline}</span><span class="ticker-sep">${SEP}</span>`;
 
-    // Duplicate for seamless infinite scroll
-    contentEl.innerHTML = html + html;
+    // Duplicate for seamless loop
+    el.innerHTML = html + html;
 
-    // Calculate duration based on content length
-    const totalChars = items.reduce((sum, i) => sum + i.text.length, 0) + 40;
-    setDuration(totalChars);
+    const chars = items.reduce((s, i) => s + i.text.length, 0) + 50;
+    setDuration(chars);
   }
 
   function buildItems() {
     const items = [];
 
-    // Add alert items
-    alertItems.forEach(alert => {
-      items.push({
-        text: alert.text,
-        severity: alert.severity
-      });
-    });
+    // Storm items first (highest priority)
+    stormItems.forEach(s => items.push(s));
 
-    // Add time-based info
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    // Alert items
+    alertItems.forEach(a => items.push(a));
 
-    if (alertItems.length === 0) {
-      items.push({ text: `Current time: ${timeStr} — No active weather alerts for ${CONFIG.state}` });
-      items.push({ text: `${CONFIG.location.name} — Live radar coverage` });
+    // Default filler if nothing
+    if (items.length === 0) {
+      const now = new Date();
+      const t = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      items.push({ text: `${t} — No active tropical systems or severe weather for ${CONFIG.state}` });
+      items.push({ text: `${CONFIG.location.name} — ${CONFIG.region} — Live hurricane & weather tracking` });
     }
 
     return items;
   }
 
-  function setDuration(charCount) {
-    // ~80 pixels per second scroll speed, ~7px per character
-    const pixels = charCount * 7;
-    const duration = Math.max(15, pixels / 80);
-    const track = document.querySelector('.ticker-track');
-    if (track) {
-      track.style.setProperty('--ticker-duration', `${duration}s`);
-    }
-    if (contentEl) {
-      contentEl.style.animationDuration = `${duration}s`;
-    }
+  function setDuration(chars) {
+    const dur = Math.max(18, (chars * 7) / 85);
+    const rail = document.querySelector('.ticker-rail');
+    if (rail) rail.style.setProperty('--ticker-dur', `${dur}s`);
+    if (el) el.style.animationDuration = `${dur}s`;
   }
 
-  return { init, setAlerts };
+  return { init, setAlerts, setStorms };
 })();

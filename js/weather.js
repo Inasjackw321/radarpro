@@ -1,6 +1,6 @@
 /**
- * RadarPro - Weather Module
- * Current conditions and forecast from NWS API
+ * StormTracker Pro - Weather Module
+ * Current conditions + 7-day forecast from NWS API
  */
 const Weather = (() => {
   let forecastUrl = null;
@@ -10,19 +10,17 @@ const Weather = (() => {
 
   async function init() {
     await resolveEndpoints();
-    await fetchConditions();
-    await fetchForecast();
+    await Promise.all([fetchConditions(), fetchForecast()]);
     setInterval(() => {
       fetchConditions();
       fetchForecast();
-    }, CONFIG.refreshIntervals.conditions);
+    }, CONFIG.intervals.conditions);
   }
 
   async function resolveEndpoints() {
     const { lat, lng } = CONFIG.location;
     const data = await safeFetch(`https://api.weather.gov/points/${lat},${lng}`);
     if (!data) return;
-
     forecastUrl = data.properties.forecast;
     forecastHourlyUrl = data.properties.forecastHourly;
     stationsUrl = data.properties.observationStations;
@@ -30,178 +28,136 @@ const Weather = (() => {
 
   async function fetchConditions() {
     if (!stationsUrl) return;
-
-    // Get nearest station
     const stations = await safeFetch(stationsUrl);
-    if (!stations || !stations.features || stations.features.length === 0) return;
+    if (!stations?.features?.length) return;
 
-    const stationId = stations.features[0].properties.stationIdentifier;
-
-    // Get latest observation
-    const obs = await safeFetch(
-      `https://api.weather.gov/stations/${stationId}/observations/latest`
-    );
+    const stId = stations.features[0].properties.stationIdentifier;
+    const obs = await safeFetch(`https://api.weather.gov/stations/${stId}/observations/latest`);
     if (!obs) return;
-
-    updateConditionsDisplay(obs.properties);
+    displayConditions(obs.properties);
   }
 
-  function updateConditionsDisplay(props) {
-    // Temperature (C to F)
-    const tempC = props.temperature?.value;
-    if (tempC !== null && tempC !== undefined) {
-      const tempF = Math.round(tempC * 9 / 5 + 32);
-      setText('current-temp', `${tempF}°`);
+  function displayConditions(p) {
+    // Temperature
+    const tc = p.temperature?.value;
+    if (tc != null) {
+      const tf = Math.round(tc * 9 / 5 + 32);
+      setText('cond-temp', `${tf}°`);
     }
 
-    // Conditions text
-    const desc = props.textDescription || 'N/A';
-    setText('conditions-text', desc);
+    // Description + icon
+    const desc = p.textDescription || '--';
+    setText('cond-desc', desc);
+    setText('cond-icon', matchIcon(desc));
+    setText('cond-location', CONFIG.location.name);
 
-    // Conditions icon
-    const icon = matchConditionIcon(desc);
-    setText('conditions-icon', icon);
-
-    // Feels like (heat index or wind chill)
-    const heatIndex = props.heatIndex?.value;
-    const windChill = props.windChill?.value;
-    if (heatIndex !== null && heatIndex !== undefined) {
-      setText('feels-like', Math.round(heatIndex * 9 / 5 + 32) + '°');
-    } else if (windChill !== null && windChill !== undefined) {
-      setText('feels-like', Math.round(windChill * 9 / 5 + 32) + '°');
-    } else if (tempC !== null && tempC !== undefined) {
-      setText('feels-like', Math.round(tempC * 9 / 5 + 32) + '°');
-    }
+    // Feels like
+    const hi = p.heatIndex?.value;
+    const wc = p.windChill?.value;
+    if (hi != null) setText('cond-feels', Math.round(hi * 9 / 5 + 32) + '°');
+    else if (wc != null) setText('cond-feels', Math.round(wc * 9 / 5 + 32) + '°');
+    else if (tc != null) setText('cond-feels', Math.round(tc * 9 / 5 + 32) + '°');
 
     // Humidity
-    const humidity = props.relativeHumidity?.value;
-    if (humidity !== null && humidity !== undefined) {
-      setText('humidity', Math.round(humidity) + '%');
+    const rh = p.relativeHumidity?.value;
+    if (rh != null) setText('cond-humidity', Math.round(rh) + '%');
+
+    // Wind
+    const ws = p.windSpeed?.value;
+    if (ws != null) setText('cond-wind', Math.round(ws * 2.237) + ' mph');
+
+    const wd = p.windDirection?.value;
+    if (wd != null) {
+      const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+      setText('cond-wind', `${Math.round(ws * 2.237)} ${dirs[Math.round(wd / 22.5) % 16]}`);
     }
 
-    // Wind speed (m/s to mph)
-    const windMs = props.windSpeed?.value;
-    if (windMs !== null && windMs !== undefined) {
-      const windMph = Math.round(windMs * 2.237);
-      setText('wind-speed', `${windMph} mph`);
-    }
+    // Pressure
+    const bp = p.barometricPressure?.value;
+    if (bp != null) setText('cond-pressure', (bp / 100).toFixed(0) + ' mb');
 
-    // Wind direction (degrees to cardinal)
-    const windDeg = props.windDirection?.value;
-    if (windDeg !== null && windDeg !== undefined) {
-      setText('wind-dir', degreesToCardinal(windDeg));
-    }
+    // Visibility
+    const vis = p.visibility?.value;
+    if (vis != null) setText('cond-vis', (vis / 1609.34).toFixed(1) + ' mi');
 
-    // Visibility (meters to miles)
-    const visM = props.visibility?.value;
-    if (visM !== null && visM !== undefined) {
-      const visMi = (visM / 1609.34).toFixed(1);
-      setText('visibility', `${visMi} mi`);
-    }
+    // Dew point
+    const dp = p.dewpoint?.value;
+    if (dp != null) setText('cond-dewpoint', Math.round(dp * 9 / 5 + 32) + '°');
 
-    // Barometric pressure (Pa to mb)
-    const pressurePa = props.barometricPressure?.value;
-    if (pressurePa !== null && pressurePa !== undefined) {
-      const mb = (pressurePa / 100).toFixed(0);
-      setText('pressure', `${mb} mb`);
-    }
-
-    // Flash updated values
-    document.querySelectorAll('.detail-value').forEach(el => {
+    // Flash animation
+    document.querySelectorAll('.cond-value').forEach(el => {
       el.classList.remove('data-updated');
-      void el.offsetWidth; // force reflow
+      void el.offsetWidth;
       el.classList.add('data-updated');
     });
   }
 
   async function fetchForecast() {
     if (!forecastUrl) return;
-
     const data = await safeFetch(forecastUrl);
     if (!data) return;
-
     forecastData = data.properties.periods;
-    updateForecastDisplay();
+    renderForecast();
   }
 
-  function updateForecastDisplay() {
+  function renderForecast() {
     if (!forecastData) return;
-
-    const grid = document.getElementById('forecast-grid');
+    const grid = document.getElementById('forecast-cards');
     if (!grid) return;
 
-    // Group periods into day/night pairs (up to 7 days)
     const days = [];
     for (let i = 0; i < forecastData.length && days.length < 7; i++) {
-      const period = forecastData[i];
-      if (period.isDaytime) {
-        const nightPeriod = forecastData[i + 1];
+      const p = forecastData[i];
+      if (p.isDaytime) {
+        const night = forecastData[i + 1];
         days.push({
-          name: period.name,
-          highTemp: period.temperature,
-          lowTemp: nightPeriod ? nightPeriod.temperature : null,
-          shortForecast: period.shortForecast,
-          windSpeed: period.windSpeed,
-          windDirection: period.windDirection,
-          icon: matchConditionIcon(period.shortForecast),
-          isToday: i === 0
+          name: p.name,
+          hi: p.temperature,
+          lo: night ? night.temperature : null,
+          desc: p.shortForecast,
+          wind: p.windSpeed,
+          windDir: p.windDirection,
+          icon: matchIcon(p.shortForecast),
+          today: i === 0
         });
       }
     }
 
-    grid.innerHTML = days.map((day, idx) => `
-      <div class="forecast-card ${day.isToday ? 'today' : ''}">
-        <div class="forecast-day">${day.isToday ? 'Today' : day.name}</div>
-        <div class="forecast-icon">${day.icon}</div>
-        <div class="forecast-temp-high">${day.highTemp}°</div>
-        <div class="forecast-temp-low">${day.lowTemp !== null ? day.lowTemp + '°' : ''}</div>
-        <div class="forecast-desc">${day.shortForecast}</div>
-        <div class="forecast-wind">💨 ${day.windSpeed}</div>
+    grid.innerHTML = days.map(d => `
+      <div class="fcast-card ${d.today ? 'today' : ''}">
+        <div class="fcast-day">${d.today ? 'Today' : d.name}</div>
+        <div class="fcast-icon">${d.icon}</div>
+        <div class="fcast-hi">${d.hi}°</div>
+        <div class="fcast-lo">${d.lo != null ? d.lo + '°' : ''}</div>
+        <div class="fcast-desc">${d.desc}</div>
+        <div class="fcast-wind">💨 ${d.wind} ${d.windDir}</div>
       </div>
     `).join('');
 
-    // Update forecast location
-    const locEl = document.getElementById('forecast-location');
-    if (locEl) locEl.textContent = CONFIG.location.name;
+    setText('forecast-loc', CONFIG.location.name);
   }
 
-  function matchConditionIcon(description) {
-    if (!description) return '🌡️';
-    const desc = description.toLowerCase();
-
-    // Check config mapping first
-    for (const [key, icon] of Object.entries(CONFIG.conditionIcons)) {
-      if (desc.includes(key.toLowerCase())) return icon;
+  function matchIcon(desc) {
+    if (!desc) return '🌡️';
+    const d = desc.toLowerCase();
+    for (const [k, v] of Object.entries(CONFIG.conditionIcons)) {
+      if (d.includes(k.toLowerCase())) return v;
     }
-
-    // Fallback matching
-    if (desc.includes('thunder') || desc.includes('storm')) return '⛈️';
-    if (desc.includes('snow') || desc.includes('blizzard')) return '🌨️';
-    if (desc.includes('rain') || desc.includes('shower') || desc.includes('drizzle')) return '🌧️';
-    if (desc.includes('cloud') || desc.includes('overcast')) return '☁️';
-    if (desc.includes('sun') || desc.includes('clear')) return '☀️';
-    if (desc.includes('fog') || desc.includes('mist') || desc.includes('haze')) return '🌫️';
-    if (desc.includes('wind')) return '💨';
-    if (desc.includes('ice') || desc.includes('freez')) return '🧊';
-
+    if (d.includes('hurricane') || d.includes('tropical')) return '🌀';
+    if (d.includes('thunder') || d.includes('storm')) return '⛈️';
+    if (d.includes('rain') || d.includes('shower')) return '🌧️';
+    if (d.includes('snow')) return '🌨️';
+    if (d.includes('cloud') || d.includes('overcast')) return '☁️';
+    if (d.includes('sun') || d.includes('clear')) return '☀️';
+    if (d.includes('fog') || d.includes('mist')) return '🌫️';
+    if (d.includes('wind')) return '💨';
     return '🌤️';
   }
 
-  function degreesToCardinal(deg) {
-    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-                  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-    const idx = Math.round(deg / 22.5) % 16;
-    return dirs[idx];
-  }
-
-  function setText(id, text) {
+  function setText(id, val) {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el) el.textContent = val;
   }
 
-  function getForecastData() {
-    return forecastData;
-  }
-
-  return { init, fetchConditions, fetchForecast, getForecastData };
+  return { init, fetchConditions, fetchForecast };
 })();

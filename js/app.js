@@ -1,202 +1,161 @@
 /**
- * RadarPro - App Controller
- * Main initialization, clock, scene manager, utility functions
+ * StormTracker Pro - App Controller
+ * Initialization, clock, scene manager, utilities
  */
 
-// === Shared Utility: Safe Fetch with NWS User-Agent ===
-async function safeFetch(url, options = {}) {
+// === Shared Fetch Utility ===
+async function safeFetch(url, opts = {}) {
   try {
-    const headers = { ...options.headers };
-
-    // Add User-Agent for NWS API calls
+    const headers = { ...opts.headers };
     if (url.includes('weather.gov')) {
       headers['User-Agent'] = CONFIG.nws.userAgent;
       headers['Accept'] = 'application/geo+json';
     }
-
-    const response = await fetch(url, { ...options, headers });
-    if (!response.ok) {
-      console.warn(`Fetch error ${response.status}: ${url}`);
-      return null;
-    }
-    return await response.json();
-  } catch (err) {
-    console.warn(`Fetch failed: ${url}`, err.message);
+    const r = await fetch(url, { ...opts, headers });
+    if (!r.ok) { console.warn(`[Fetch] ${r.status}: ${url}`); return null; }
+    return await r.json();
+  } catch (e) {
+    console.warn(`[Fetch] Failed: ${url}`, e.message);
     return null;
   }
 }
 
 // === App Controller ===
 const App = (() => {
-  let currentScene = 'radar';
-  let sceneIndex = 0;
+  const scenes = CONFIG.scenes;
+  let sceneIdx = 0;
+  let currentScene = scenes[0];
   let sceneTimer = null;
-  let clockTimer = null;
 
   function init() {
-    console.log('%c[RadarPro] Initializing...', 'color:#00aaff;font-weight:bold');
+    console.log('%c[StormTracker Pro] Booting...', 'color:#00d4ff;font-weight:bold');
 
-    // Set branding
-    setText('station-name', CONFIG.branding.stationName);
-    setText('station-tagline', CONFIG.branding.tagline);
-    setText('location-name', CONFIG.location.name);
+    // Branding
+    setText('brand-name', CONFIG.branding.stationName + ' ' + CONFIG.branding.callSign);
+    setText('brand-tagline', CONFIG.branding.tagline);
 
     // Transparent mode
-    if (CONFIG.obs.transparentBg) {
-      document.body.classList.add('transparent-mode');
-    }
+    if (CONFIG.obs.transparentBg) document.body.classList.add('transparent-mode');
 
-    // Start clock
+    // Clock
     updateClock();
-    clockTimer = setInterval(updateClock, 1000);
+    setInterval(updateClock, CONFIG.intervals.clock);
 
-    // Initialize modules
-    initModules();
+    // Init modules
+    boot();
   }
 
-  async function initModules() {
-    // Radar first (most important)
-    try {
-      RadarMap.init();
-      console.log('%c[RadarPro] Radar initialized', 'color:#10b981');
-    } catch (e) {
-      console.error('[RadarPro] Radar init failed:', e);
-    }
+  async function boot() {
+    // Radar (core)
+    tryInit('RadarMap', RadarMap);
 
-    // Weather conditions
-    try {
-      Weather.init();
-      console.log('%c[RadarPro] Weather initialized', 'color:#10b981');
-    } catch (e) {
-      console.error('[RadarPro] Weather init failed:', e);
-    }
+    // Satellite
+    tryInit('Satellite', Satellite);
 
-    // Alerts
-    try {
-      AlertSystem.init();
-      console.log('%c[RadarPro] Alerts initialized', 'color:#10b981');
-    } catch (e) {
-      console.error('[RadarPro] Alerts init failed:', e);
-    }
+    // Weather
+    tryInit('Weather', Weather);
+
+    // Alerts + NHC
+    tryInit('AlertSystem', AlertSystem);
 
     // Ticker
-    try {
-      Ticker.init();
-      console.log('%c[RadarPro] Ticker initialized', 'color:#10b981');
-    } catch (e) {
-      console.error('[RadarPro] Ticker init failed:', e);
-    }
+    tryInit('Ticker', Ticker);
 
     // Cameras
+    tryInit('Cameras', Cameras);
+
+    // Activate first scene
+    activateScene(scenes[0]);
+
+    // Start rotation
+    sceneTimer = setInterval(nextScene, CONFIG.intervals.sceneRotation);
+
+    console.log('%c[StormTracker Pro] All systems online 🌀', 'color:#00d4ff;font-weight:bold;font-size:14px');
+  }
+
+  function tryInit(name, mod) {
     try {
-      Cameras.init();
-      console.log('%c[RadarPro] Cameras initialized', 'color:#10b981');
+      mod.init();
+      console.log(`%c[${name}] ✓`, 'color:#22c55e');
     } catch (e) {
-      console.error('[RadarPro] Cameras init failed:', e);
+      console.error(`[${name}] Init failed:`, e);
     }
-
-    // Start scene rotation
-    startSceneRotation();
-
-    console.log('%c[RadarPro] All systems go! 📡', 'color:#00aaff;font-weight:bold;font-size:14px');
   }
 
   // === Clock ===
   function updateClock() {
     const now = new Date();
-
-    const timeStr = now.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-
-    const dateStr = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-
-    setText('clock-time', timeStr);
-    setText('clock-date', dateStr);
+    setText('clock-time', now.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+    }));
+    setText('clock-date', now.toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    }));
   }
 
   // === Scene Manager ===
-  function startSceneRotation() {
-    sceneTimer = setInterval(() => {
-      // Pause rotation during severe alerts (stay on radar)
-      if (AlertSystem.hasSevereAlerts && AlertSystem.hasSevereAlerts()) {
-        if (currentScene !== 'radar') {
-          switchScene('radar');
-        }
+  function nextScene() {
+    // If severe alerts or active storms, prefer radar/satellite scenes
+    if (AlertSystem.hasSevereAlerts && AlertSystem.hasSevereAlerts()) {
+      if (currentScene !== 'radar' && currentScene !== 'satellite') {
+        // Cycle between radar and satellite during severe weather
+        const severeScenes = ['radar', 'satellite'];
+        const idx = severeScenes.indexOf(currentScene);
+        activateScene(severeScenes[(idx + 1) % severeScenes.length]);
         return;
       }
-
-      // Advance to next scene
-      sceneIndex = (sceneIndex + 1) % CONFIG.scenes.length;
-      switchScene(CONFIG.scenes[sceneIndex]);
-    }, CONFIG.refreshIntervals.sceneRotation);
-  }
-
-  function switchScene(sceneName) {
-    if (sceneName === currentScene) return;
-
-    const forecastPanel = document.getElementById('forecast-overlay');
-    const cameraPanel = document.getElementById('camera-panel');
-    const mapContainer = document.getElementById('map-container');
-    const sidebar = document.getElementById('sidebar-left');
-    const sceneLabel = document.getElementById('scene-label');
-
-    // Hide all scene panels
-    if (forecastPanel) forecastPanel.classList.add('hidden');
-    if (cameraPanel) cameraPanel.classList.add('hidden');
-
-    // Show appropriate scene
-    switch (sceneName) {
-      case 'radar':
-        if (sidebar) sidebar.style.opacity = '1';
-        if (sceneLabel) sceneLabel.textContent = 'RADAR';
-        break;
-
-      case 'forecast':
-        if (forecastPanel) {
-          forecastPanel.classList.remove('hidden');
-          forecastPanel.classList.add('fade-in');
-        }
-        if (sceneLabel) sceneLabel.textContent = 'FORECAST';
-        break;
-
-      case 'cameras':
-        if (cameraPanel) {
-          cameraPanel.classList.remove('hidden');
-          cameraPanel.classList.add('fade-in');
-        }
-        if (sceneLabel) sceneLabel.textContent = 'CAMERAS';
-        break;
     }
 
-    currentScene = sceneName;
+    sceneIdx = (sceneIdx + 1) % scenes.length;
+    activateScene(scenes[sceneIdx]);
+  }
 
-    // Update scene label animation
-    if (sceneLabel) {
-      sceneLabel.style.animation = 'none';
-      void sceneLabel.offsetWidth;
-      sceneLabel.style.animation = 'labelSwap 0.3s ease';
+  function activateScene(name) {
+    // Deactivate all
+    document.querySelectorAll('.scene').forEach(el => {
+      el.classList.remove('active');
+      el.classList.remove('entering');
+    });
+
+    // Activate target
+    const target = document.getElementById(`scene-${name}`);
+    if (target) {
+      target.classList.add('entering');
+      // Force reflow then activate
+      void target.offsetWidth;
+      target.classList.add('active');
+      target.classList.remove('entering');
+    }
+
+    currentScene = name;
+
+    // Update scene indicator
+    const nameEl = document.getElementById('scene-name');
+    if (nameEl) {
+      const labels = {
+        radar: 'RADAR', satellite: 'SATELLITE', forecast: 'FORECAST',
+        tropical: 'TROPICAL', cameras: 'CAMERAS'
+      };
+      nameEl.textContent = labels[name] || name.toUpperCase();
+      nameEl.style.animation = 'none';
+      void nameEl.offsetWidth;
+      nameEl.style.animation = 'labelSwap 0.3s ease';
+    }
+
+    // Refresh satellite image when switching to satellite scene
+    if (name === 'satellite' && typeof Satellite !== 'undefined') {
+      Satellite.loadImage();
     }
   }
 
   // === Utility ===
-  function setText(id, text) {
+  function setText(id, val) {
     const el = document.getElementById(id);
-    if (el) el.textContent = text;
+    if (el) el.textContent = val;
   }
 
-  return { init, switchScene };
+  return { init, activateScene, nextScene };
 })();
 
 // === Boot ===
-document.addEventListener('DOMContentLoaded', () => {
-  App.init();
-});
+document.addEventListener('DOMContentLoaded', () => App.init());
