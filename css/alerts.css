@@ -1,0 +1,228 @@
+/* ============================================
+   RadarPro - Alert Styles
+   Severity-based color system for weather alerts
+   ============================================ */
+
+/* === Alert Banner === */
+.alert-banner {
+  position: absolute;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  animation: slideDown 0.4s ease;
+  transition: background 0.3s ease;
+}
+
+.alert-banner.hiding {
+  animation: slideUp 0.4s ease forwards;
+}
+
+.alert-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.alert-event {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.alert-headline {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.alert-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+}
+
+/* === Severity: EXTREME (Tornado Warning, etc.) === */
+.alert-banner.alert-extreme {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  color: #ffffff;
+  border-bottom: 2px solid #fca5a5;
+  animation: slideDown 0.4s ease, alertGlow 1.5s ease-in-out infinite;
+}
+
+.alert-extreme .alert-event {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* === Severity: SEVERE (Severe Thunderstorm Warning, Flash Flood Warning) === */
+.alert-banner.alert-severe {
+  background: linear-gradient(135deg, #c2410c, #ea580c);
+  color: #ffffff;
+  border-bottom: 2px solid #fdba74;
+}
+
+/* === Severity: MODERATE (Winter Storm, Flood Warning, Watches) === */
+.alert-banner.alert-moderate {
+  background: linear-gradient(135deg, #b45309, #d97706);
+  color: #ffffff;
+  border-bottom: 2px solid #fcd34d;
+}
+
+/* === Severity: MINOR (Advisories, Statements) === */
+.alert-banner.alert-minor {
+  background: linear-gradient(135deg, #a16207, #ca8a04);
+  color: #1a1a2e;
+  border-bottom: 2px solid #fde68a;
+}
+
+.alert-minor .alert-event,
+.alert-minor .alert-headline {
+  color: #1a1a2e;
+}
+
+/* === Severity: UNKNOWN === */
+.alert-banner.alert-unknown {
+  background: linear-gradient(135deg, #4b5563, #6b7280);
+  color: #ffffff;
+  border-bottom: 2px solid #9ca3af;
+}
+
+/* === Alert Type Specific Overrides === */
+
+/* Tornado Warning - most extreme, pulsing effect */
+.alert-banner[data-event="Tornado Warning"] {
+  background: linear-gradient(135deg, #991b1b, #dc2626, #991b1b);
+  background-size: 200% 200%;
+  animation: slideDown 0.4s ease, tornadoPulse 1s ease-in-out infinite;
+}
+
+@keyframes tornadoPulse {
+  0%, 100% {
+    background-position: 0% 50%;
+    box-shadow: 0 2px 20px rgba(220, 38, 38, 0.4);
+  }
+  50% {
+    background-position: 100% 50%;
+    box-shadow: 0 2px 40px rgba(220, 38, 38, 0.8);
+  }
+}
+
+/* Tornado Watch */
+.alert-banner[data-event="Tornado Watch"] {
+  background: linear-gradient(135deg, #92400e, #d97706);
+}
+
+/* Hurricane Warning */
+.alert-banner[data-event="Hurricane Warning"] {
+  background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+  animation: slideDown 0.4s ease, alertGlow 2s ease-in-out infinite;
+}
+
+/* === Sidebar Alert Items === */
+.alert-item {
+  transition: all 0.3s ease;
+}
+
+.alert-item.severity-Extreme {
+  border-left-color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.alert-item.severity-Extreme .alert-item-event {
+  color: #fca5a5;
+}
+
+.alert-item.severity-Severe {
+  border-left-color: #ea580c;
+  background: rgba(234, 88, 12, 0.1);
+}
+
+.alert-item.severity-Moderate {
+  border-left-color: #d97706;
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.alert-item.severity-Minor {
+  border-left-color: #ca8a04;
+  background: rgba(202, 138, 4, 0.06);
+}
+
+.alert-item.severity-Unknown {
+  border-left-color: #6b7280;
+  background: rgba(107, 114, 128, 0.06);
+}
+
+/* === Ticker Alert Items === */
+.ticker-item-alert {
+  position: relative;
+}
+
+.ticker-item-alert::before {
+  content: '⚠';
+  margin-right: 6px;
+  font-size: 12px;
+}
+
+.ticker-item-alert.extreme::before {
+  content: '🔴';
+}
+
+.ticker-item-alert.severe::before {
+  content: '🟠';
+}
+
+.ticker-item-alert.moderate::before {
+  content: '🟡';
+}
+
+/* === Map Alert Polygons (Leaflet) === */
+.leaflet-alert-polygon-extreme {
+  fill: #dc2626;
+  fill-opacity: 0.2;
+  stroke: #dc2626;
+  stroke-width: 2;
+  stroke-opacity: 0.8;
+}
+
+.leaflet-alert-polygon-severe {
+  fill: #ea580c;
+  fill-opacity: 0.15;
+  stroke: #ea580c;
+  stroke-width: 2;
+  stroke-opacity: 0.7;
+}
+
+.leaflet-alert-polygon-moderate {
+  fill: #d97706;
+  fill-opacity: 0.1;
+  stroke: #d97706;
+  stroke-width: 1.5;
+  stroke-opacity: 0.6;
+}
+
+.leaflet-alert-polygon-minor {
+  fill: #ca8a04;
+  fill-opacity: 0.08;
+  stroke: #ca8a04;
+  stroke-width: 1;
+  stroke-opacity: 0.5;
+}
