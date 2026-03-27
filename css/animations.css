@@ -1,0 +1,20 @@
+/* StormTracker Pro GLOBAL — Animations */
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
+@keyframes slowSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:scale(1)}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-100%);opacity:0}}
+@keyframes alertGlow{0%,100%{box-shadow:0 2px 16px rgba(239,68,68,.2)}50%{box-shadow:0 2px 32px rgba(239,68,68,.5)}}
+@keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes labelSwap{0%{transform:translateY(-3px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes dataFlash{0%{background-color:rgba(0,212,255,.1)}100%{background-color:transparent}}
+.data-updated{animation:dataFlash .5s ease}
+@keyframes pinRing{0%{transform:scale(1);opacity:.6}100%{transform:scale(3);opacity:0}}
+@keyframes jumpPulse{0%,100%{opacity:1;transform:translateX(0)}50%{opacity:.4;transform:translateX(3px)}}
+@keyframes tornadoPulse{0%{background-position:0% 50%;box-shadow:0 2px 20px rgba(220,38,38,.4)}50%{background-position:100% 50%;box-shadow:0 2px 40px rgba(220,38,38,.8)}100%{background-position:0% 50%;box-shadow:0 2px 20px rgba(220,38,38,.4)}}
+@keyframes mapFlyTo{0%{opacity:.3}100%{opacity:1}}
+.map-flying{animation:mapFlyTo .8s ease}
+@keyframes stormGlow{0%,100%{filter:brightness(1) drop-shadow(0 0 4px currentColor)}50%{filter:brightness(1.2) drop-shadow(0 0 8px currentColor)}}
