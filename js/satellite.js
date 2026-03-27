@@ -1,137 +1,107 @@
 /**
- * StormTracker Pro - Satellite Module
- * GOES-16/18 satellite imagery with multiple products and sectors
+ * StormTracker Pro GLOBAL — Satellite Module
+ * GOES-16/18, Himawari-9, Meteosat imagery
  */
 const Satellite = (() => {
-  let currentProduct = null;
-  let currentSector = null;
-  let productIndex = 0;
-  let rotateTimer = null;
+  let currentSat = 'GOES16';
+  let currentSector = 'taw';
+  let currentProduct = 'GEOCOLOR';
+  let productIdx = 0;
+  let satIdx = 0;
 
   function init() {
-    currentProduct = CONFIG.satellite.defaultProduct;
-    currentSector = CONFIG.satellite.defaultSector;
-
-    buildProductStrip();
+    buildStrip();
     loadImage();
-
-    // Auto-rotate satellite products every cycle
-    rotateTimer = setInterval(() => {
-      rotateProduct();
-    }, 8000); // Change product every 8 seconds when satellite scene is active
-
-    // Refresh images periodically
-    setInterval(() => loadImage(), CONFIG.intervals.satellite);
+    // Rotate product every 7s
+    setInterval(rotateProduct, 7000);
+    // Refresh periodically
+    setInterval(loadImage, CONFIG.intervals.satellite);
   }
 
-  function buildProductStrip() {
-    const strip = document.getElementById('sat-product-strip');
+  function buildStrip() {
+    const strip = document.getElementById('sat-strip');
     if (!strip) return;
-
-    const products = CONFIG.satellite.products;
-    strip.innerHTML = products.map(p =>
-      `<div class="sat-chip ${p.id === currentProduct ? 'active' : ''}" data-product="${p.id}">${p.name}</div>`
+    strip.innerHTML = CONFIG.satProducts.map(p =>
+      `<div class="sc ${p.id === currentProduct ? 'active' : ''}" data-p="${p.id}">${p.name}</div>`
     ).join('');
   }
 
   function loadImage() {
-    const img = document.getElementById('sat-image');
-    const loading = document.getElementById('sat-loading');
+    const img = document.getElementById('sat-img');
+    const ld = document.getElementById('sat-load');
     if (!img) return;
 
-    const goes = CONFIG.satellite.goes;
-    const sector = getSectorConfig(currentSector);
-    const product = currentProduct;
+    const url = buildUrl();
+    if (ld) ld.classList.remove('hidden');
 
-    // Build URL based on product type
-    let url;
-    const isSpecialProduct = ['GEOCOLOR', 'AirMass', 'Sandwich', 'DayCloudPhase', 'NightMicrophysics'].includes(product);
-
-    if (isSpecialProduct) {
-      url = `https://cdn.star.nesdis.noaa.gov/${goes}/ABI/SECTOR/${currentSector}/${product}/latest.jpg`;
-    } else {
-      url = `https://cdn.star.nesdis.noaa.gov/${goes}/ABI/SECTOR/${currentSector}/${product}/latest.jpg`;
-    }
-
-    // Cache bust
-    url += `?_t=${Date.now()}`;
-
-    if (loading) loading.classList.remove('hidden');
-
-    const tempImg = new Image();
-    tempImg.onload = () => {
-      img.src = tempImg.src;
-      img.style.opacity = '1';
-      if (loading) loading.classList.add('hidden');
-      updateSatInfo();
+    const tmp = new Image();
+    tmp.onload = () => {
+      img.src = tmp.src;
+      if (ld) ld.classList.add('hidden');
+      updateInfo();
     };
-    tempImg.onerror = () => {
-      // Try CONUS fallback
-      const fallbackUrl = `https://cdn.star.nesdis.noaa.gov/${goes}/ABI/CONUS/${product}/latest.jpg?_t=${Date.now()}`;
-      img.src = fallbackUrl;
-      if (loading) loading.classList.add('hidden');
-      updateSatInfo();
+    tmp.onerror = () => {
+      // Fallback: try GOES16 CONUS
+      img.src = `https://cdn.star.nesdis.noaa.gov/GOES16/ABI/CONUS/GEOCOLOR/latest.jpg?_t=${Date.now()}`;
+      if (ld) ld.classList.add('hidden');
+      updateInfo();
     };
-    tempImg.src = url;
+    tmp.src = url;
   }
 
-  function updateSatInfo() {
-    const product = CONFIG.satellite.products.find(p => p.id === currentProduct);
-    const sector = CONFIG.satellite.sectors.find(s => s.id === currentSector);
-
-    const nameEl = document.getElementById('sat-product-name');
-    const sectorEl = document.getElementById('sat-sector-name');
-    const timeEl = document.getElementById('sat-timestamp');
-
-    if (nameEl) nameEl.textContent = product ? product.name : currentProduct;
-    if (sectorEl) sectorEl.textContent = sector ? sector.name : currentSector;
-    if (timeEl) {
-      const now = new Date();
-      timeEl.textContent = now.toLocaleTimeString('en-US', {
-        hour: 'numeric', minute: '2-digit', hour12: true
-      });
+  function buildUrl() {
+    const t = Date.now();
+    if (currentSat === 'HIM') {
+      // Himawari — use JMA imagery
+      return `https://www.data.jma.go.jp/mscweb/data/himawari/img/fd_/fd__trm_0.jpg?_t=${t}`;
     }
+    if (currentSat === 'MET') {
+      // Meteosat
+      return `https://eumetview.eumetsat.int/static-images/latestImages/EUMETSAT_MSGIODC_RGBNatColour_LowResolution.jpg?_t=${t}`;
+    }
+    // GOES
+    const sat = CONFIG.satellites[currentSat];
+    if (!sat) return '';
+    return `${sat.cdnBase}/SECTOR/${currentSector}/${currentProduct}/latest.jpg?_t=${t}`;
+  }
 
-    // Update strip active state
-    document.querySelectorAll('.sat-chip').forEach(chip => {
-      chip.classList.toggle('active', chip.dataset.product === currentProduct);
+  function updateInfo() {
+    const satCfg = CONFIG.satellites[currentSat];
+    const prod = CONFIG.satProducts.find(p => p.id === currentProduct);
+    setText('si-name', satCfg ? satCfg.name : currentSat);
+    setText('si-product', prod ? `${prod.name} — ${prod.desc}` : currentProduct);
+    setText('si-time', new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
+
+    document.querySelectorAll('.sc').forEach(c => {
+      c.classList.toggle('active', c.dataset.p === currentProduct);
     });
   }
 
   function rotateProduct() {
-    const products = CONFIG.satellite.products;
-    productIndex = (productIndex + 1) % products.length;
-    currentProduct = products[productIndex].id;
+    productIdx = (productIdx + 1) % CONFIG.satProducts.length;
+    currentProduct = CONFIG.satProducts[productIdx].id;
     loadImage();
   }
 
-  function rotateSector() {
-    const sectors = CONFIG.satellite.sectors;
-    const idx = sectors.findIndex(s => s.id === currentSector);
-    currentSector = sectors[(idx + 1) % sectors.length].id;
+  // Switch to satellite for a basin
+  function setSatForBasin(basinId) {
+    const b = CONFIG.basins.find(x => x.id === basinId);
+    if (!b) return;
+    currentSat = b.sat;
+    currentSector = b.sector;
     loadImage();
   }
 
-  function setProduct(productId) {
-    currentProduct = productId;
-    productIndex = CONFIG.satellite.products.findIndex(p => p.id === productId);
+  // Cycle through satellites globally
+  function rotateSat() {
+    const sats = ['GOES16', 'GOES18', 'HIM', 'MET'];
+    satIdx = (satIdx + 1) % sats.length;
+    currentSat = sats[satIdx];
+    currentSector = CONFIG.satellites[currentSat]?.sectors?.[0]?.id || 'FD';
     loadImage();
   }
 
-  function setSector(sectorId) {
-    currentSector = sectorId;
-    loadImage();
-  }
+  function setText(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
 
-  function getSectorConfig(id) {
-    return CONFIG.satellite.sectors.find(s => s.id === id) || CONFIG.satellite.sectors[0];
-  }
-
-  function getCurrentProduct() { return currentProduct; }
-  function getCurrentSector() { return currentSector; }
-
-  return {
-    init, loadImage, rotateProduct, rotateSector,
-    setProduct, setSector, getCurrentProduct, getCurrentSector
-  };
+  return { init, loadImage, rotateProduct, rotateSat, setSatForBasin };
 })();

@@ -1,59 +1,47 @@
 /**
- * StormTracker Pro - Cameras Module
- * Satellite imagery feeds and coastal cameras
+ * StormTracker Pro GLOBAL — Cameras / Satellite Feeds
  */
 const Cameras = (() => {
-  let refreshTimers = [];
+  let timers = [];
 
   function init() {
-    const grid = document.getElementById('cameras-grid');
+    const grid = document.getElementById('cams-grid');
     if (!grid) return;
 
-    const cams = CONFIG.cameras || [];
-
-    grid.innerHTML = cams.map((cam, i) => {
-      if (cam.type === 'iframe') {
-        return `<div class="cam-cell">
-          <iframe src="${cam.url}" loading="lazy" allowfullscreen></iframe>
-          <div class="cam-label">${cam.name}</div>
-        </div>`;
+    const cams = CONFIG.cameras;
+    grid.innerHTML = cams.map((c, i) => {
+      if (c.type === 'iframe') {
+        return `<div class="cam-c"><iframe src="${c.url}" loading="lazy" allowfullscreen></iframe><div class="cam-lbl">${c.name}</div></div>`;
       }
-      return `<div class="cam-cell">
-        <div class="cam-loading">Loading...</div>
-        <img id="cam-${i}" src="${cam.url}" alt="${cam.name}" loading="lazy"
-             onerror="this.style.opacity='0.2'"
-             onload="this.style.opacity='1';this.previousElementSibling.style.display='none'">
-        <div class="cam-label">${cam.name}</div>
-      </div>`;
+      return `<div class="cam-c"><div class="cam-ld">Loading...</div><img id="cm-${i}" src="${c.url}" alt="${c.name}" loading="lazy" onerror="this.style.opacity='.15'" onload="this.style.opacity='1';this.previousElementSibling.style.display='none'"><div class="cam-lbl">${c.name}</div></div>`;
     }).join('');
 
     // Refresh image cameras
-    cams.forEach((cam, i) => {
-      if (cam.type === 'img') {
-        const timer = setInterval(() => {
-          const img = document.getElementById(`cam-${i}`);
-          if (img) {
-            const sep = cam.url.includes('?') ? '&' : '?';
-            img.src = `${cam.url}${sep}_t=${Date.now()}`;
-          }
-        }, CONFIG.intervals.cameras);
-        refreshTimers.push(timer);
+    cams.forEach((c, i) => {
+      if (c.type === 'img') {
+        timers.push(setInterval(() => {
+          const img = document.getElementById(`cm-${i}`);
+          if (img) img.src = `${c.url}${c.url.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+        }, CONFIG.intervals.cameras));
       }
     });
 
-    // Also refresh tropical outlook images
-    setInterval(() => {
-      refreshImg('tropical-outlook-img', 'https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png');
-      refreshImg('tropical-outlook-img-2', 'https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png');
-      refreshImg('tropical-sat-thumb', `https://cdn.star.nesdis.noaa.gov/${CONFIG.satellite.goes}/ABI/SECTOR/taw/GEOCOLOR/latest.jpg`);
-      refreshImg('tropical-ir-thumb', `https://cdn.star.nesdis.noaa.gov/${CONFIG.satellite.goes}/ABI/SECTOR/taw/13/latest.jpg`);
-    }, 120000); // 2 min
+    // Globe view refresh
+    setInterval(refreshGlobe, 120000);
   }
 
-  function refreshImg(id, baseUrl) {
+  function refreshGlobe() {
+    const t = Date.now();
+    refreshImg('globe-goes16', `https://cdn.star.nesdis.noaa.gov/GOES16/ABI/FD/GEOCOLOR/678x678.jpg?_t=${t}`);
+    refreshImg('globe-goes18', `https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/678x678.jpg?_t=${t}`);
+    refreshImg('globe-him', `https://www.data.jma.go.jp/mscweb/data/himawari/img/fd_/fd__trm_0.jpg?_t=${t}`);
+    refreshImg('globe-met', `https://eumetview.eumetsat.int/static-images/latestImages/EUMETSAT_MSGIODC_RGBNatColour_LowResolution.jpg?_t=${t}`);
+  }
+
+  function refreshImg(id, url) {
     const img = document.getElementById(id);
-    if (img) img.src = `${baseUrl}?_t=${Date.now()}`;
+    if (img) img.src = url;
   }
 
-  return { init };
+  return { init, refreshGlobe };
 })();

@@ -1,147 +1,26 @@
-/* =============================================
-   StormTracker Pro - Alert & Warning Styles
-   Hurricane-focused severity system
-   ============================================= */
+/* StormTracker Pro GLOBAL — Alert Styles */
 
-/* === Alert Banner === */
-.alert-banner {
-  position: absolute;
-  top: var(--top-h); left: 0; right: 0;
-  z-index: 100;
-  display: flex; align-items: center;
-  padding: 0;
-  animation: slideDown 0.4s ease;
-  overflow: hidden;
-}
-.alert-banner.hiding { animation: slideUp 0.4s ease forwards; }
+.alert-ribbon{position:absolute;top:var(--top);left:0;right:0;z-index:100;display:flex;align-items:center;animation:slideDown .4s ease;overflow:hidden}
+.alert-ribbon.hiding{animation:slideUp .4s ease forwards}
+.ribbon-stripe{width:4px;height:100%;flex-shrink:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.25),rgba(255,255,255,.25) 3px,transparent 3px,transparent 6px)}
+.ribbon-body{flex:1;display:flex;align-items:center;gap:8px;padding:7px 14px;min-width:0}
+.ribbon-badge{font-size:8px;font-weight:800;letter-spacing:1.5px;padding:2px 8px;border-radius:3px;background:rgba(255,255,255,.18);flex-shrink:0}
+.ribbon-event{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.ribbon-detail{font-size:10px;font-weight:500;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.ribbon-count{flex-shrink:0;padding:0 12px;font-size:9px;font-weight:700;font-family:var(--fm);opacity:.6}
 
-.alert-stripe {
-  width: 5px; height: 100%; flex-shrink: 0;
-  background: repeating-linear-gradient(
-    -45deg,
-    rgba(255,255,255,0.3), rgba(255,255,255,0.3) 4px,
-    transparent 4px, transparent 8px
-  );
-}
+.alert-ribbon.alert-extreme{background:linear-gradient(135deg,#991b1b,#dc2626);color:#fff;border-bottom:2px solid #fca5a5;animation:slideDown .4s ease,alertGlow 1.5s ease-in-out infinite}
+.alert-ribbon[data-event="Tornado Warning"]{background:linear-gradient(135deg,#7f1d1d,#dc2626,#991b1b);background-size:200% 200%;animation:slideDown .4s ease,tornadoPulse 1s ease-in-out infinite}
+.alert-ribbon[data-event="Hurricane Warning"]{background:linear-gradient(135deg,#581c87,#7c3aed,#a855f7);border-bottom:2px solid #c4b5fd}
+.alert-ribbon[data-event="Typhoon Warning"]{background:linear-gradient(135deg,#581c87,#7c3aed,#a855f7);border-bottom:2px solid #c4b5fd}
+.alert-ribbon[data-event="Hurricane Watch"]{background:linear-gradient(135deg,#701a75,#a21caf);border-bottom:2px solid #f0abfc}
+.alert-ribbon[data-event="Storm Surge Warning"]{background:linear-gradient(135deg,#164e63,#0891b2);border-bottom:2px solid #67e8f9}
+.alert-ribbon[data-event="Tropical Storm Warning"]{background:linear-gradient(135deg,#065f46,#059669);border-bottom:2px solid #6ee7b7}
+.alert-ribbon.alert-severe{background:linear-gradient(135deg,#9a3412,#ea580c);color:#fff;border-bottom:2px solid #fdba74}
+.alert-ribbon.alert-moderate{background:linear-gradient(135deg,#92400e,#d97706);color:#fff;border-bottom:2px solid #fcd34d}
+.alert-ribbon.alert-minor{background:linear-gradient(135deg,#854d0e,#ca8a04);color:#0f0f1a;border-bottom:2px solid #fde68a}
+.alert-ribbon.alert-unknown{background:linear-gradient(135deg,#374151,#6b7280);color:#fff;border-bottom:2px solid #9ca3af}
 
-.alert-body {
-  flex: 1; display: flex; align-items: center; gap: 10px;
-  padding: 8px 16px;
-  min-width: 0;
-}
-
-.alert-severity-badge {
-  font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
-  padding: 3px 10px; border-radius: 3px;
-  background: rgba(255,255,255,0.2); flex-shrink: 0;
-}
-
-.alert-event-text {
-  font-size: 13px; font-weight: 800; letter-spacing: 0.5px;
-  text-transform: uppercase; white-space: nowrap;
-}
-
-.alert-area-text {
-  font-size: 11px; font-weight: 500; opacity: 0.85;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  flex: 1;
-}
-
-.alert-counter {
-  flex-shrink: 0; padding: 0 14px;
-  font-size: 10px; font-weight: 700; font-family: var(--f-mono);
-  opacity: 0.7;
-}
-
-/* === EXTREME: Tornado, Hurricane Warning === */
-.alert-banner.alert-extreme {
-  background: linear-gradient(135deg, #991b1b, #dc2626);
-  color: #fff;
-  border-bottom: 2px solid #fca5a5;
-  animation: slideDown 0.4s ease, alertGlow 1.5s ease-in-out infinite;
-}
-
-/* Tornado Warning special */
-.alert-banner[data-event="Tornado Warning"] {
-  background: linear-gradient(135deg, #7f1d1d, #dc2626, #991b1b);
-  background-size: 200% 200%;
-  animation: slideDown 0.4s ease, tornadoPulse 1s ease-in-out infinite;
-}
-
-/* Hurricane Warning */
-.alert-banner[data-event="Hurricane Warning"] {
-  background: linear-gradient(135deg, #581c87, #7c3aed, #a855f7);
-  border-bottom: 2px solid #c4b5fd;
-  animation: slideDown 0.4s ease, alertGlow 2s ease-in-out infinite;
-}
-
-/* Hurricane Watch */
-.alert-banner[data-event="Hurricane Watch"] {
-  background: linear-gradient(135deg, #701a75, #a21caf);
-  border-bottom: 2px solid #f0abfc;
-}
-
-/* Storm Surge Warning */
-.alert-banner[data-event="Storm Surge Warning"] {
-  background: linear-gradient(135deg, #164e63, #0891b2);
-  border-bottom: 2px solid #67e8f9;
-}
-
-/* === SEVERE === */
-.alert-banner.alert-severe {
-  background: linear-gradient(135deg, #9a3412, #ea580c);
-  color: #fff;
-  border-bottom: 2px solid #fdba74;
-}
-
-/* Tropical Storm Warning */
-.alert-banner[data-event="Tropical Storm Warning"] {
-  background: linear-gradient(135deg, #065f46, #059669);
-  border-bottom: 2px solid #6ee7b7;
-}
-
-/* === MODERATE === */
-.alert-banner.alert-moderate {
-  background: linear-gradient(135deg, #92400e, #d97706);
-  color: #fff;
-  border-bottom: 2px solid #fcd34d;
-}
-
-/* === MINOR === */
-.alert-banner.alert-minor {
-  background: linear-gradient(135deg, #854d0e, #ca8a04);
-  color: #0f0f1a;
-  border-bottom: 2px solid #fde68a;
-}
-.alert-minor .alert-event-text,
-.alert-minor .alert-area-text { color: #0f0f1a; }
-
-/* === UNKNOWN === */
-.alert-banner.alert-unknown {
-  background: linear-gradient(135deg, #374151, #6b7280);
-  color: #fff;
-  border-bottom: 2px solid #9ca3af;
-}
-
-/* === Sidebar Alert Items === */
-.alert-item.sev-Extreme {
-  border-left-color: #dc2626; background: rgba(220,38,38,0.1);
-}
-.alert-item.sev-Severe {
-  border-left-color: #ea580c; background: rgba(234,88,12,0.08);
-}
-.alert-item.sev-Moderate {
-  border-left-color: #d97706; background: rgba(217,119,6,0.06);
-}
-.alert-item.sev-Minor {
-  border-left-color: #ca8a04; background: rgba(202,138,4,0.04);
-}
-
-/* === Leaflet Alert Polygons (map) === */
-/* Applied via JS style options, these are reference */
-
-/* === Ticker Alert Styles === */
-.ticker-item.alert-ticker::before { content: '⚠ '; font-size: 11px; }
-.ticker-item.alert-ticker.extreme::before { content: '🔴 '; }
-.ticker-item.alert-ticker.severe::before { content: '🟠 '; }
-.ticker-item.alert-ticker.hurricane::before { content: '🌀 '; }
+.tk.alert-tk::before{content:'⚠ ';font-size:10px}
+.tk.alert-tk.extreme::before{content:'🔴 '}
+.tk.storm-tk::before{content:'🌀 '}

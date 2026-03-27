@@ -3,17 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
-  <title>StormTracker Pro - Hurricane & Cyclone Coverage</title>
-
-  <!-- Fonts -->
+  <title>StormTracker Pro — Global Cyclone Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-  <!-- App CSS -->
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/alerts.css">
@@ -21,256 +15,253 @@
 <body>
   <div id="app">
 
-    <!-- ========== TOP BAR ========== -->
-    <header id="top-bar">
-      <div class="top-left">
-        <div class="brand">
-          <div class="brand-logo">🌀</div>
-          <div class="brand-info">
-            <span class="brand-name" id="brand-name"></span>
-            <span class="brand-tagline" id="brand-tagline"></span>
+    <!-- ===== TOP CHROME ===== -->
+    <header id="chrome-top">
+      <div class="chrome-left">
+        <div class="brand-cluster">
+          <div class="brand-cyclone">🌀</div>
+          <div class="brand-stack">
+            <span class="brand-title" id="brand-title"></span>
+            <span class="brand-sub" id="brand-sub"></span>
           </div>
         </div>
       </div>
-      <div class="top-center">
-        <div class="live-pill" id="live-pill">
-          <span class="live-dot"></span>
-          <span class="live-label">LIVE</span>
-        </div>
-        <div class="scene-indicator" id="scene-indicator">
-          <span class="scene-dot"></span>
-          <span class="scene-name" id="scene-name">RADAR</span>
-        </div>
+      <div class="chrome-center">
+        <div class="pill pill-live"><span class="dot-live"></span>LIVE</div>
+        <div class="pill pill-scene" id="pill-scene">RADAR</div>
+        <div class="pill pill-basin" id="pill-basin">ATLANTIC</div>
       </div>
-      <div class="top-right">
-        <div class="clock-block">
-          <div class="clock-time" id="clock-time">--:--:-- --</div>
-          <div class="clock-date" id="clock-date">Loading...</div>
+      <div class="chrome-right">
+        <div class="location-chip" id="location-chip">
+          <span class="loc-icon">📍</span>
+          <span class="loc-name" id="loc-name">--</span>
+        </div>
+        <div class="clock-stack">
+          <div class="clk-time" id="clk-time">--:--:-- --</div>
+          <div class="clk-date" id="clk-date">---</div>
         </div>
       </div>
     </header>
 
-    <!-- ========== ALERT BANNER ========== -->
-    <div id="alert-banner" class="alert-banner hidden">
-      <div class="alert-stripe"></div>
-      <div class="alert-body">
-        <span class="alert-severity-badge" id="alert-severity-badge">WARNING</span>
-        <span class="alert-event-text" id="alert-event-text"></span>
-        <span class="alert-area-text" id="alert-area-text"></span>
+    <!-- ===== ALERT RIBBON ===== -->
+    <div id="alert-ribbon" class="alert-ribbon hidden">
+      <div class="ribbon-stripe"></div>
+      <div class="ribbon-body">
+        <span class="ribbon-badge" id="ribbon-badge">WARNING</span>
+        <span class="ribbon-event" id="ribbon-event"></span>
+        <span class="ribbon-detail" id="ribbon-detail"></span>
       </div>
-      <div class="alert-counter" id="alert-counter"></div>
+      <div class="ribbon-count" id="ribbon-count"></div>
     </div>
 
-    <!-- ========== LEFT PANEL ========== -->
-    <aside id="left-panel">
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <aside id="sidebar">
 
-      <!-- Active Storms Card -->
-      <div class="panel-card storm-card" id="storm-card">
-        <div class="card-head">
-          <span class="card-head-icon">🌀</span>
-          <span class="card-head-title">Active Storms</span>
-          <span class="card-badge" id="storm-count-badge">0</span>
+      <!-- Global Storms -->
+      <section class="sb-card sb-storms">
+        <div class="sb-head">
+          <span class="sb-icon">🌀</span>
+          <span class="sb-title">Global Storms</span>
+          <span class="sb-badge" id="storm-badge">0</span>
         </div>
-        <div class="card-body" id="storm-list">
-          <div class="empty-state">No active tropical systems</div>
+        <div class="sb-body" id="storm-list">
+          <div class="sb-empty">No active systems worldwide</div>
         </div>
-      </div>
+      </section>
 
-      <!-- Conditions Card -->
-      <div class="panel-card conditions-card">
-        <div class="card-head">
-          <span class="card-head-icon">📍</span>
-          <span class="card-head-title" id="cond-location">--</span>
+      <!-- Active Basin -->
+      <section class="sb-card sb-basin">
+        <div class="sb-head">
+          <span class="sb-icon">🗺️</span>
+          <span class="sb-title" id="basin-title">Basin Overview</span>
         </div>
-        <div class="conditions-hero">
-          <div class="conditions-temp" id="cond-temp">--°</div>
-          <div class="conditions-emoji" id="cond-icon">🌡️</div>
-        </div>
-        <div class="conditions-desc" id="cond-desc">Loading conditions...</div>
-        <div class="conditions-grid">
-          <div class="cond-cell">
-            <div class="cond-label">Feels Like</div>
-            <div class="cond-value" id="cond-feels">--°</div>
-          </div>
-          <div class="cond-cell">
-            <div class="cond-label">Humidity</div>
-            <div class="cond-value" id="cond-humidity">--%</div>
-          </div>
-          <div class="cond-cell">
-            <div class="cond-label">Wind</div>
-            <div class="cond-value" id="cond-wind">-- mph</div>
-          </div>
-          <div class="cond-cell">
-            <div class="cond-label">Pressure</div>
-            <div class="cond-value" id="cond-pressure">-- mb</div>
-          </div>
-          <div class="cond-cell">
-            <div class="cond-label">Visibility</div>
-            <div class="cond-value" id="cond-vis">-- mi</div>
-          </div>
-          <div class="cond-cell">
-            <div class="cond-label">Dew Point</div>
-            <div class="cond-value" id="cond-dewpoint">--°</div>
-          </div>
-        </div>
-      </div>
+        <div class="basin-chips" id="basin-chips"></div>
+      </section>
 
-      <!-- Alerts Card -->
-      <div class="panel-card alerts-card">
-        <div class="card-head">
-          <span class="card-head-icon">⚠️</span>
-          <span class="card-head-title">Alerts</span>
-          <span class="card-badge alert-badge-count" id="alert-count">0</span>
+      <!-- Conditions -->
+      <section class="sb-card sb-conditions">
+        <div class="sb-head">
+          <span class="sb-icon">🌡️</span>
+          <span class="sb-title" id="cond-loc">Conditions</span>
         </div>
-        <div class="card-body alert-scroll" id="alert-list">
-          <div class="empty-state">No active alerts</div>
+        <div class="cond-hero">
+          <span class="cond-temp" id="cond-temp">--°</span>
+          <span class="cond-emoji" id="cond-emoji">🌤️</span>
         </div>
-      </div>
+        <div class="cond-desc" id="cond-desc">Loading...</div>
+        <div class="cond-grid">
+          <div class="cg"><div class="cg-l">Humidity</div><div class="cg-v" id="cg-hum">--%</div></div>
+          <div class="cg"><div class="cg-l">Wind</div><div class="cg-v" id="cg-wind">--</div></div>
+          <div class="cg"><div class="cg-l">Pressure</div><div class="cg-v" id="cg-pres">--</div></div>
+          <div class="cg"><div class="cg-l">Dew Pt</div><div class="cg-v" id="cg-dew">--</div></div>
+        </div>
+      </section>
 
-      <!-- Satellite Selector (mini) -->
-      <div class="panel-card sat-card">
-        <div class="card-head">
-          <span class="card-head-icon">🛰️</span>
-          <span class="card-head-title">Satellite</span>
+      <!-- Alerts -->
+      <section class="sb-card sb-alerts">
+        <div class="sb-head">
+          <span class="sb-icon">⚠️</span>
+          <span class="sb-title">Alerts</span>
+          <span class="sb-badge alert-badge-ct" id="alert-ct">0</span>
         </div>
-        <div class="sat-product-name" id="sat-product-name">GeoColor</div>
-        <div class="sat-sector-name" id="sat-sector-name">Tropical Atlantic</div>
-        <div class="sat-timestamp" id="sat-timestamp">--</div>
-      </div>
+        <div class="sb-body alert-list-scroll" id="alert-list">
+          <div class="sb-empty">No active alerts</div>
+        </div>
+      </section>
+
+      <!-- Satellite Info -->
+      <section class="sb-card sb-satinfo">
+        <div class="sb-head">
+          <span class="sb-icon">🛰️</span>
+          <span class="sb-title">Satellite</span>
+        </div>
+        <div class="satinfo-name" id="si-name">--</div>
+        <div class="satinfo-product" id="si-product">--</div>
+        <div class="satinfo-time" id="si-time">--</div>
+      </section>
 
     </aside>
 
-    <!-- ========== MAIN VIEWPORT ========== -->
-    <main id="main-viewport">
+    <!-- ===== MAIN VIEWPORT ===== -->
+    <main id="viewport">
 
-      <!-- Radar Scene -->
+      <!-- Radar -->
       <div class="scene active" id="scene-radar">
         <div id="radar-map"></div>
-        <!-- Map overlays -->
-        <div class="map-hud top-left" id="map-hud-tl">
-          <div class="hud-badge">
-            <span class="hud-icon">📡</span>
-            <span id="radar-time-hud">--:-- --</span>
+        <div class="hud tl"><div class="hud-chip"><span class="hud-ic">📡</span><span id="hud-radar-time">--</span></div></div>
+        <div class="hud br">
+          <div class="hud-chip legend-chip">
+            <div class="legend-title">Precipitation</div>
+            <div class="legend-bar"></div>
+            <div class="legend-range"><span>Light</span><span>Moderate</span><span>Heavy</span><span>Extreme</span></div>
           </div>
         </div>
-        <div class="map-hud bottom-right">
-          <div class="precip-legend">
-            <div class="legend-title">Precipitation Intensity</div>
-            <div class="legend-scale">
-              <div class="legend-bar"></div>
-              <div class="legend-labels">
-                <span>Light</span><span>Moderate</span><span>Heavy</span><span>Extreme</span>
-              </div>
-            </div>
+        <div class="hud bl">
+          <div class="hud-chip">
+            <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+            <span class="prog-lbl" id="prog-lbl">--</span>
           </div>
         </div>
-        <div class="map-hud bottom-left">
-          <div class="radar-progress-hud">
-            <div class="radar-progress-track">
-              <div class="radar-progress-fill" id="radar-progress-fill"></div>
-            </div>
-            <span class="radar-frame-label" id="radar-frame-label">-- / --</span>
+        <div class="hud tr" id="hud-jump-info">
+          <div class="hud-chip jump-chip">
+            <span class="jump-arrow">→</span>
+            <span id="jump-loc-name">--</span>
           </div>
         </div>
       </div>
 
-      <!-- Satellite Scene -->
+      <!-- Satellite -->
       <div class="scene" id="scene-satellite">
-        <div class="sat-viewport">
-          <img id="sat-image" class="sat-img" alt="Satellite imagery" />
-          <div class="sat-loading" id="sat-loading">
-            <div class="spinner"></div>
-            <span>Loading satellite imagery...</span>
-          </div>
+        <div class="sat-view">
+          <img id="sat-img" class="sat-img" alt="Satellite" />
+          <div class="sat-load" id="sat-load"><div class="spin"></div>Loading imagery...</div>
         </div>
-        <div class="sat-product-strip" id="sat-product-strip"></div>
+        <div class="sat-strip" id="sat-strip"></div>
       </div>
 
-      <!-- Forecast Scene -->
+      <!-- Globe Overview (all basins satellite grid) -->
+      <div class="scene" id="scene-globe">
+        <div class="globe-inner">
+          <div class="globe-head">
+            <span class="globe-title">🌍 Global Satellite Overview</span>
+          </div>
+          <div class="globe-grid" id="globe-grid">
+            <div class="globe-cell">
+              <img id="globe-goes16" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/FD/GEOCOLOR/678x678.jpg" alt="GOES-16">
+              <div class="globe-label">GOES-16 East · Americas</div>
+            </div>
+            <div class="globe-cell">
+              <img id="globe-goes18" src="https://cdn.star.nesdis.noaa.gov/GOES18/ABI/FD/GEOCOLOR/678x678.jpg" alt="GOES-18">
+              <div class="globe-label">GOES-18 West · Pacific</div>
+            </div>
+            <div class="globe-cell">
+              <img id="globe-him" src="https://www.data.jma.go.jp/mscweb/data/himawari/img/fd_/fd__trm_0.jpg" alt="Himawari">
+              <div class="globe-label">Himawari-9 · W. Pacific</div>
+            </div>
+            <div class="globe-cell">
+              <img id="globe-met" src="https://eumetview.eumetsat.int/static-images/latestImages/EUMETSAT_MSGIODC_RGBNatColour_LowResolution.jpg" alt="Meteosat">
+              <div class="globe-label">Meteosat · Indian Ocean</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forecast -->
       <div class="scene" id="scene-forecast">
-        <div class="forecast-scene-inner">
-          <div class="forecast-scene-head">
-            <span class="forecast-scene-title">7-Day Forecast</span>
-            <span class="forecast-scene-loc" id="forecast-loc"></span>
+        <div class="fcast-inner">
+          <div class="fcast-head">
+            <span class="fcast-title">7-Day Forecast</span>
+            <span class="fcast-loc" id="fcast-loc"></span>
           </div>
-          <div class="forecast-cards" id="forecast-cards"></div>
+          <div class="fcast-cards" id="fcast-cards"></div>
         </div>
       </div>
 
-      <!-- Tropical Outlook Scene -->
+      <!-- Tropical Outlooks -->
       <div class="scene" id="scene-tropical">
-        <div class="tropical-inner">
-          <div class="tropical-head">
-            <span class="tropical-title">🌀 Tropical Outlook</span>
-            <span class="tropical-basin" id="tropical-basin">Atlantic Basin</span>
+        <div class="trop-inner">
+          <div class="trop-head">
+            <span class="trop-title">🌀 Tropical Outlooks — All Basins</span>
           </div>
-          <div class="tropical-grid">
-            <div class="tropical-cell tropical-outlook-img">
-              <img id="tropical-outlook-img"
-                   src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png"
-                   alt="5-Day Tropical Outlook" />
-              <div class="tropical-cell-label">5-Day Tropical Outlook</div>
+          <div class="trop-grid">
+            <div class="trop-cell">
+              <img src="https://www.nhc.noaa.gov/xgtwo/two_atl_5d0.png" alt="ATL 5-Day">
+              <div class="trop-label">Atlantic 5-Day</div>
             </div>
-            <div class="tropical-cell tropical-outlook-img">
-              <img id="tropical-outlook-img-2"
-                   src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png"
-                   alt="2-Day Tropical Outlook" />
-              <div class="tropical-cell-label">2-Day Tropical Outlook</div>
+            <div class="trop-cell">
+              <img src="https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png" alt="ATL 2-Day">
+              <div class="trop-label">Atlantic 2-Day</div>
             </div>
-            <div class="tropical-cell tropical-sat-thumb">
-              <img id="tropical-sat-thumb"
-                   src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/taw/GEOCOLOR/latest.jpg"
-                   alt="Atlantic Satellite" />
-              <div class="tropical-cell-label">Atlantic Satellite</div>
+            <div class="trop-cell">
+              <img src="https://www.nhc.noaa.gov/xgtwo/two_pac_5d0.png" alt="EPAC 5-Day">
+              <div class="trop-label">East Pacific 5-Day</div>
             </div>
-            <div class="tropical-cell tropical-ir-thumb">
-              <img id="tropical-ir-thumb"
-                   src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/taw/13/latest.jpg"
-                   alt="Atlantic IR" />
-              <div class="tropical-cell-label">Infrared View</div>
+            <div class="trop-cell">
+              <img src="https://www.nhc.noaa.gov/xgtwo/two_cpac_5d0.png" alt="CPAC 5-Day">
+              <div class="trop-label">Central Pacific 5-Day</div>
+            </div>
+            <div class="trop-cell">
+              <img id="trop-sat-atl" src="https://cdn.star.nesdis.noaa.gov/GOES16/ABI/SECTOR/taw/GEOCOLOR/latest.jpg" alt="ATL Sat">
+              <div class="trop-label">Atlantic Satellite</div>
+            </div>
+            <div class="trop-cell">
+              <img id="trop-sat-epac" src="https://cdn.star.nesdis.noaa.gov/GOES18/ABI/SECTOR/tpw/GEOCOLOR/latest.jpg" alt="EPAC Sat">
+              <div class="trop-label">East Pacific Satellite</div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Cameras Scene -->
+      <!-- Cameras -->
       <div class="scene" id="scene-cameras">
-        <div class="cameras-inner">
-          <div class="cameras-head">
-            <span class="cameras-title">📹 Live Satellite & Cameras</span>
-          </div>
-          <div class="cameras-grid" id="cameras-grid"></div>
+        <div class="cams-inner">
+          <div class="cams-head"><span class="cams-title">🛰️ Global Satellite Feeds</span></div>
+          <div class="cams-grid" id="cams-grid"></div>
         </div>
       </div>
 
     </main>
 
-    <!-- ========== BOTTOM BAR ========== -->
-    <footer id="bottom-bar">
-      <div class="ticker-tag">
-        <span class="ticker-tag-icon">⚡</span>
-        <span class="ticker-tag-text">ALERTS</span>
+    <!-- ===== BOTTOM CHROME ===== -->
+    <footer id="chrome-bottom">
+      <div class="tick-tag">
+        <span class="tick-tag-ic">⚡</span>
+        <span class="tick-tag-tx">GLOBAL</span>
       </div>
-      <div class="ticker-rail">
-        <div class="ticker-scroll" id="ticker-scroll"></div>
+      <div class="tick-rail">
+        <div class="tick-scroll" id="tick-scroll"></div>
       </div>
-      <div class="saffir-strip">
-        <span class="ss-chip td">TD</span>
-        <span class="ss-chip ts">TS</span>
-        <span class="ss-chip c1">1</span>
-        <span class="ss-chip c2">2</span>
-        <span class="ss-chip c3">3</span>
-        <span class="ss-chip c4">4</span>
-        <span class="ss-chip c5">5</span>
+      <div class="ss-strip">
+        <span class="ss td">TD</span><span class="ss ts">TS</span>
+        <span class="ss c1">1</span><span class="ss c2">2</span>
+        <span class="ss c3">3</span><span class="ss c4">4</span>
+        <span class="ss c5">5</span><span class="ss sty">S</span>
       </div>
     </footer>
 
   </div>
 
-  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- App JS -->
   <script src="js/config.js"></script>
   <script src="js/radar.js"></script>
   <script src="js/satellite.js"></script>

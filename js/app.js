@@ -1,161 +1,194 @@
 /**
- * StormTracker Pro - App Controller
- * Initialization, clock, scene manager, utilities
+ * StormTracker Pro GLOBAL — App Controller
+ * Location jumping, scene rotation, clock, initialization
  */
 
-// === Shared Fetch Utility ===
+// === Safe Fetch ===
 async function safeFetch(url, opts = {}) {
   try {
-    const headers = { ...opts.headers };
-    if (url.includes('weather.gov')) {
-      headers['User-Agent'] = CONFIG.nws.userAgent;
-      headers['Accept'] = 'application/geo+json';
-    }
-    const r = await fetch(url, { ...opts, headers });
-    if (!r.ok) { console.warn(`[Fetch] ${r.status}: ${url}`); return null; }
+    const h = { ...opts.headers };
+    if (url.includes('weather.gov')) { h['User-Agent'] = CONFIG.nws.userAgent; h['Accept'] = 'application/geo+json'; }
+    const r = await fetch(url, { ...opts, headers: h });
+    if (!r.ok) return null;
     return await r.json();
-  } catch (e) {
-    console.warn(`[Fetch] Failed: ${url}`, e.message);
-    return null;
-  }
+  } catch (e) { console.warn('[Fetch]', url, e.message); return null; }
 }
 
-// === App Controller ===
+// === App ===
 const App = (() => {
-  const scenes = CONFIG.scenes;
   let sceneIdx = 0;
-  let currentScene = scenes[0];
+  let locIdx = 0;
   let sceneTimer = null;
+  let jumpTimer = null;
+  let currentScene = 'radar';
 
   function init() {
-    console.log('%c[StormTracker Pro] Booting...', 'color:#00d4ff;font-weight:bold');
+    console.log('%c[StormTracker Pro GLOBAL] Booting...', 'color:#00d4ff;font-weight:bold;font-size:13px');
 
     // Branding
-    setText('brand-name', CONFIG.branding.stationName + ' ' + CONFIG.branding.callSign);
-    setText('brand-tagline', CONFIG.branding.tagline);
+    setText('brand-title', CONFIG.branding.stationName + ' ' + CONFIG.branding.callSign);
+    setText('brand-sub', CONFIG.branding.tagline);
 
-    // Transparent mode
     if (CONFIG.obs.transparentBg) document.body.classList.add('transparent-mode');
 
     // Clock
     updateClock();
     setInterval(updateClock, CONFIG.intervals.clock);
 
-    // Init modules
-    boot();
-  }
+    // Init location
+    updateLocationDisplay();
 
-  async function boot() {
-    // Radar (core)
+    // Boot modules
     tryInit('RadarMap', RadarMap);
-
-    // Satellite
     tryInit('Satellite', Satellite);
-
-    // Weather
     tryInit('Weather', Weather);
-
-    // Alerts + NHC
     tryInit('AlertSystem', AlertSystem);
-
-    // Ticker
     tryInit('Ticker', Ticker);
-
-    // Cameras
     tryInit('Cameras', Cameras);
 
     // Activate first scene
-    activateScene(scenes[0]);
+    activateScene('radar');
 
-    // Start rotation
+    // Scene rotation
     sceneTimer = setInterval(nextScene, CONFIG.intervals.sceneRotation);
 
-    console.log('%c[StormTracker Pro] All systems online 🌀', 'color:#00d4ff;font-weight:bold;font-size:14px');
+    // Location jumping
+    jumpTimer = setInterval(jumpLocation, CONFIG.intervals.locationJump);
+
+    // Build basin chips
+    buildBasinChips();
+
+    console.log('%c[StormTracker Pro GLOBAL] All systems online 🌀🌍', 'color:#00d4ff;font-weight:bold;font-size:14px');
   }
 
   function tryInit(name, mod) {
-    try {
-      mod.init();
-      console.log(`%c[${name}] ✓`, 'color:#22c55e');
-    } catch (e) {
-      console.error(`[${name}] Init failed:`, e);
-    }
+    try { mod.init(); console.log(`%c[${name}] ✓`, 'color:#22c55e'); }
+    catch (e) { console.error(`[${name}]`, e); }
   }
 
   // === Clock ===
   function updateClock() {
     const now = new Date();
-    setText('clock-time', now.toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
-    }));
-    setText('clock-date', now.toLocaleDateString('en-US', {
-      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-    }));
+    setText('clk-time', now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }));
+    setText('clk-date', now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }));
   }
 
-  // === Scene Manager ===
-  function nextScene() {
-    // If severe alerts or active storms, prefer radar/satellite scenes
-    if (AlertSystem.hasSevereAlerts && AlertSystem.hasSevereAlerts()) {
-      if (currentScene !== 'radar' && currentScene !== 'satellite') {
-        // Cycle between radar and satellite during severe weather
-        const severeScenes = ['radar', 'satellite'];
-        const idx = severeScenes.indexOf(currentScene);
-        activateScene(severeScenes[(idx + 1) % severeScenes.length]);
+  // === Location Jumping ===
+  function jumpLocation() {
+    locIdx = (locIdx + 1) % CONFIG.locations.length;
+
+    // If there are active storms, prioritize jumping to storm locations
+    const storms = AlertSystem.getStorms ? AlertSystem.getStorms() : [];
+    if (storms.length > 0 && Math.random() > 0.4) {
+      // 60% chance to jump to a storm location
+      const storm = storms[Math.floor(Math.random() * storms.length)];
+      if (storm.lat != null && storm.lon != null) {
+        jumpToStorm(storm);
         return;
       }
     }
 
-    sceneIdx = (sceneIdx + 1) % scenes.length;
-    activateScene(scenes[sceneIdx]);
+    const loc = CONFIG.locations[locIdx];
+    CONFIG.activeLocationIdx = locIdx;
+
+    // Fly map to new location
+    if (typeof RadarMap !== 'undefined') {
+      RadarMap.flyTo(loc.lat, loc.lng, 6);
+    }
+
+    // Update weather for new location
+    if (typeof Weather !== 'undefined') {
+      Weather.fetchForLocation(loc);
+    }
+
+    // Fetch alerts for new location (if US)
+    if (typeof AlertSystem !== 'undefined' && loc.state) {
+      AlertSystem.fetchAlerts();
+    }
+
+    // Update satellite for basin
+    const basin = CONFIG.basins.find(b => b.name.toLowerCase().includes(loc.region?.toLowerCase().split(' ')[0] || ''));
+    if (basin && typeof Satellite !== 'undefined') {
+      Satellite.setSatForBasin(basin.id);
+    }
+
+    updateLocationDisplay();
+  }
+
+  function jumpToStorm(storm) {
+    if (typeof RadarMap !== 'undefined') {
+      RadarMap.flyTo(storm.lat, storm.lon, 6);
+    }
+
+    // Update display
+    setText('loc-name', `🌀 ${storm.name} · ${storm.basin}`);
+    setText('jump-loc-name', `${storm.name} (${storm.maxWind || '?'} mph)`);
+
+    // Find basin for satellite
+    const basin = CONFIG.basins.find(b => b.id === storm.basinId);
+    if (basin && typeof Satellite !== 'undefined') {
+      Satellite.setSatForBasin(basin.id);
+    }
+
+    const pillBasin = document.getElementById('pill-basin');
+    if (pillBasin) pillBasin.textContent = storm.basin.toUpperCase();
+  }
+
+  function updateLocationDisplay() {
+    const loc = CONFIG.locations[CONFIG.activeLocationIdx];
+    setText('loc-name', loc.name);
+    setText('jump-loc-name', loc.name);
+
+    const pillBasin = document.getElementById('pill-basin');
+    if (pillBasin) pillBasin.textContent = (loc.region || 'GLOBAL').toUpperCase();
+  }
+
+  // === Scene Manager ===
+  function nextScene() {
+    // During severe weather or active storms, bias towards radar/satellite/globe
+    if (AlertSystem.hasSevereAlerts && AlertSystem.hasSevereAlerts()) {
+      const sevScenes = ['radar', 'satellite'];
+      const idx = sevScenes.indexOf(currentScene);
+      activateScene(sevScenes[(idx + 1) % sevScenes.length]);
+      return;
+    }
+
+    sceneIdx = (sceneIdx + 1) % CONFIG.scenes.length;
+    activateScene(CONFIG.scenes[sceneIdx]);
   }
 
   function activateScene(name) {
-    // Deactivate all
-    document.querySelectorAll('.scene').forEach(el => {
-      el.classList.remove('active');
-      el.classList.remove('entering');
-    });
-
-    // Activate target
+    document.querySelectorAll('.scene').forEach(el => { el.classList.remove('active'); });
     const target = document.getElementById(`scene-${name}`);
     if (target) {
-      target.classList.add('entering');
-      // Force reflow then activate
-      void target.offsetWidth;
-      target.classList.add('active');
-      target.classList.remove('entering');
+      requestAnimationFrame(() => { target.classList.add('active'); });
     }
 
     currentScene = name;
 
-    // Update scene indicator
-    const nameEl = document.getElementById('scene-name');
+    const nameEl = document.getElementById('pill-scene');
     if (nameEl) {
-      const labels = {
-        radar: 'RADAR', satellite: 'SATELLITE', forecast: 'FORECAST',
-        tropical: 'TROPICAL', cameras: 'CAMERAS'
-      };
+      const labels = { radar: 'RADAR', satellite: 'SATELLITE', globe: 'GLOBE', forecast: 'FORECAST', tropical: 'TROPICAL', cameras: 'CAMERAS' };
       nameEl.textContent = labels[name] || name.toUpperCase();
-      nameEl.style.animation = 'none';
-      void nameEl.offsetWidth;
-      nameEl.style.animation = 'labelSwap 0.3s ease';
+      nameEl.style.animation = 'none'; void nameEl.offsetWidth; nameEl.style.animation = 'labelSwap .3s ease';
     }
 
-    // Refresh satellite image when switching to satellite scene
-    if (name === 'satellite' && typeof Satellite !== 'undefined') {
-      Satellite.loadImage();
-    }
+    if (name === 'satellite') Satellite.loadImage();
+    if (name === 'globe') Cameras.refreshGlobe();
   }
 
-  // === Utility ===
-  function setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
+  // === Basin Chips ===
+  function buildBasinChips() {
+    const container = document.getElementById('basin-chips');
+    if (!container) return;
+    container.innerHTML = CONFIG.basins.map(b =>
+      `<div class="basin-chip">${b.emoji} ${b.name}</div>`
+    ).join('');
   }
 
-  return { init, activateScene, nextScene };
+  function setText(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }
+
+  return { init, activateScene, jumpLocation };
 })();
 
-// === Boot ===
 document.addEventListener('DOMContentLoaded', () => App.init());
